@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contador Montañas Rusas - PortAventura</title>
+  
+  <link rel="icon" type="image/jpeg" href="mclovin.jpg">
+  <link rel="shortcut icon" type="image/jpeg" href="mclovin.jpg">
+  <link rel="apple-touch-icon" href="mclovin.jpg">
+  
+  <meta property="og:title" content="Contador Montañas Rusas - PortAventura">
+  <meta property="og:description" content="Contador de quien tiene mas cojones.">
+  <meta property="og:image" content="mclovin.jpg">
+  <meta property="og:url" content="">
+  <meta property="og:type" content="website">
+  
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Auth Section -->
+    <div id="auth" class="card">
+      <h2 id="auth-title">Iniciar Sesión</h2>
+      <form id="auth-form">
+        <input type="text" id="username" placeholder="Usuario" required>
+        <input type="password" id="password" placeholder="Contraseña" required>
+        <button type="submit" id="auth-button">Entrar</button>
+      </form>
+      <p id="toggle-auth">¿No tienes cuenta? <span id="toggle-link">Regístrate</span></p>
+    </div>
+
+    <!-- Main App Section -->
+    <div id="app" class="hidden">
+      <header>
+        <h1>Mis montañas rusas en PortAventura</h1>
+        <button id="logout">Cerrar Sesión</button>
+      </header>
+      <section class="stats">
+        <div id="count-graphic" class="card">
+          <h3>Progreso Personal</h3>
+          <div id="progress-bar"><div id="progress-fill"></div></div>
+          <p><span id="total-points">0</span> puntos de <span id="max-points">0</span></p>
+          <p class="rides-info"><span id="ridden-count">0</span> atracciones de <span id="total-attractions">0</span></p>
+        </div>
+        <div id="standing" class="card">
+          <h3>Ranking Usuarios</h3>
+          <ol id="ranking-list"></ol>
+        </div>
+      </section>
+      <section id="attractions-list" class="card">
+        <h3>Lista de Atracciones por Categorías</h3>
+        <div id="categories-container"></div>
+      </section>
+    </div>
+  </div>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <script>
+    // Configuración de Firebase (pública)
+    const firebaseConfig = {
+      apiKey: "AIzaSyB4wgAaS1yXBe-5G-rjDtZbw7ccF4Z2C78",
+      authDomain: "portaventura-dbab9.firebaseapp.com",
+      databaseURL: "https://portaventura-dbab9-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "portaventura-dbab9",
+      storageBucket: "portaventura-dbab9.firebasestorage.app",
+      messagingSenderId: "187042610072",
+      appId: "1:187042610072:web:19669892ee3dfd8e9049ed",
+      measurementId: "G-CZK1FRL7QB"
+    };
+
+    // Inicializa Firebase
+    firebase.initializeApp(firebaseConfig);
+
+    // Referencia global a la base de datos para usar en script.js
+    const database = firebase.database();
+  </script>
+
+  <!-- Tu script debe ir al final -->
+  <script src="script.js"></script>
+</body>
+</html>
