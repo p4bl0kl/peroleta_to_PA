@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registro - Contador Montañas Rusas - PortAventura</title>
+  
+  <link rel="icon" type="image/jpeg" href="mclovin.jpg">
+  <link rel="shortcut icon" type="image/jpeg" href="mclovin.jpg">
+  <link rel="apple-touch-icon" href="mclovin.jpg">
+  
+  <meta property="og:title" content="Registro - Contador Montañas Rusas - PortAventura">
+  <meta property="og:description" content="Regístrate para contar tus montañas rusas en PortAventura">
+  <meta property="og:image" content="mclovin.jpg">
+  <meta property="og:url" content="">
+  <meta property="og:type" content="website">
+  
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Registration Section -->
+    <div id="auth" class="card">
+      <h2 id="auth-title">Registro</h2>
+      <form id="auth-form">
+        <input type="text" id="username" placeholder="Usuario" required>
+        <input type="password" id="password" placeholder="Contraseña" required>
+        <input type="password" id="confirm-password" placeholder="Confirmar contraseña" required>
+        <div id="password-error" class="error-message hidden"></div>
+        <button type="submit" id="auth-button">Registrar</button>
+      </form>
+      <p id="toggle-auth">¿Ya tienes cuenta? <a href="index.html" id="toggle-link">Inicia Sesión</a></p>
+    </div>
+  </div>
+  
+  <!-- Toast Notifications Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <script>
+    // Configuración de Firebase (pública)
+    const firebaseConfig = {
+      apiKey: "AIzaSyB4wgAaS1yXBe-5G-rjDtZbw7ccF4Z2C78",
+      authDomain: "portaventura-dbab9.firebaseapp.com",
+      databaseURL: "https://portaventura-dbab9-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "portaventura-dbab9",
+      storageBucket: "portaventura-dbab9.firebasestorage.app",
+      messagingSenderId: "187042610072",
+      appId: "1:187042610072:web:19669892ee3dfd8e9049ed",
+      measurementId: "G-CZK1FRL7QB"
+    };
+
+    // Inicializa Firebase
+    firebase.initializeApp(firebaseConfig);
+
+    // Referencia global a la base de datos
+    const database = firebase.database();
+    let dbRef = firebase.database().ref();
+
+    window.addEventListener('DOMContentLoaded', () => {
+      setupRegistration();
+    });
+
+    // Toast Notification System
+    function showToast(message, type = 'info', duration = 4000) {
+      const container = document.getElementById('toast-container');
+      
+      // Create toast element
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      
+      // Get icon based on type
+      const icon = getToastIcon(type);
+      
+      toast.innerHTML = `
+        <div class="toast-icon">
+          ${icon}
+        </div>
+        <div class="toast-message">${message}</div>
+        <button class="toast-close" onclick="this.parentElement.remove()">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z" fill="currentColor"/>
+          </svg>
+        </button>
+      `;
+      
+      // Add to container
+      container.appendChild(toast);
+      
+      // Trigger animation
+      setTimeout(() => {
+        toast.classList.add('show');
+      }, 10);
+      
+      // Auto remove after duration
+      setTimeout(() => {
+        if (toast.parentElement) {
+          toast.classList.remove('show');
+          setTimeout(() => {
+            if (toast.parentElement) {
+              toast.remove();
+            }
+          }, 400);
+        }
+      }, duration);
+    }
+
+    function getToastIcon(type) {
+      switch (type) {
+        case 'success':
+          return `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z" fill="currentColor"/>
+          </svg>`;
+        case 'error':
+          return `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM13 17H11V15H13V17ZM13 13H11V7H13V13Z" fill="currentColor"/>
+          </svg>`;
+        case 'warning':
+          return `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M1 21H23L12 2L1 21ZM13 18H11V16H13V18ZM13 14H11V12H13V14Z" fill="currentColor"/>
+          </svg>`;
+        case 'info':
+        default:
+          return `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM13 17H11V15H13V17ZM13 13H11V7H13V13Z" fill="currentColor"/>
+          </svg>`;
+      }
+    }
+
+    function setupRegistration() {
+      const form = document.getElementById('auth-form');
+      const passwordInput = document.getElementById('password');
+      const confirmPasswordInput = document.getElementById('confirm-password');
+      const passwordError = document.getElementById('password-error');
+
+      // Validación en tiempo real de las contraseñas
+      function validatePasswords() {
+        const password = passwordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
+        
+        if (confirmPassword && password !== confirmPassword) {
+          passwordError.textContent = 'Las contraseñas no coinciden';
+          passwordError.classList.remove('hidden');
+          return false;
+        } else {
+          passwordError.classList.add('hidden');
+          return true;
+        }
+      }
+
+      // Event listeners para validación en tiempo real
+      passwordInput.addEventListener('input', validatePasswords);
+      confirmPasswordInput.addEventListener('input', validatePasswords);
+
+      form.onsubmit = async e => {
+        e.preventDefault();
+        
+        const username = document.getElementById('username').value.trim();
+        const password = passwordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
+
+        // Validaciones
+        if (!username) {
+          showToast('Por favor, introduce un nombre de usuario', 'error');
+          return;
+        }
+
+        if (username.length < 3) {
+          showToast('El nombre de usuario debe tener al menos 3 caracteres', 'error');
+          return;
+        }
+
+        if (password.length < 6) {
+          showToast('La contraseña debe tener al menos 6 caracteres', 'error');
+          return;
+        }
+
+        if (password !== confirmPassword) {
+          showToast('Las contraseñas no coinciden', 'error');
+          return;
+        }
+
+        try {
+          // Verificar si el usuario ya existe
+          const snapshot = await dbRef.child('users/' + username).get();
+          const userData = snapshot.val();
+
+          if (userData) {
+            showToast('El nombre de usuario ya existe. Por favor, elige otro.', 'error');
+            return;
+          }
+
+          // Crear nuevo usuario
+          const newUser = { 
+            password, 
+            ridden: [],
+            createdAt: new Date().toISOString()
+          };
+          
+          await dbRef.child('users/' + username).set(newUser);
+          
+          // Redirigir al login con mensaje de éxito
+          showToast('¡Registro exitoso! Ahora puedes iniciar sesión.', 'success');
+          setTimeout(() => {
+            window.location.href = 'index.html';
+          }, 1500);
+          
+        } catch (error) {
+          console.error('Error durante el registro:', error);
+          showToast('Error durante el registro. Por favor, intenta de nuevo.', 'error');
+        }
+      };
+    }
+  </script>
+</body>
+</html> 

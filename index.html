@@ -27,21 +27,37 @@
         <input type="password" id="password" placeholder="Contraseña" required>
         <button type="submit" id="auth-button">Entrar</button>
       </form>
-      <p id="toggle-auth">¿No tienes cuenta? <span id="toggle-link">Regístrate</span></p>
+      <p id="toggle-auth">¿No tienes cuenta? <a href="registro.html" id="toggle-link">Regístrate</a></p>
     </div>
 
     <!-- Main App Section -->
     <div id="app" class="hidden">
       <header>
-        <h1>Mis montañas rusas en PortAventura</h1>
+        <h1 class="gradient-title">Peroleta a PA</h1>
         <button id="logout">Cerrar Sesión</button>
       </header>
+      
+      <!-- Floating User Profile -->
+      <div id="user-profile" class="floating-user-profile">
+        <div class="user-avatar">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12ZM12 14C9.33 14 4 15.34 4 18V20H20V18C20 15.34 14.67 14 12 14Z" fill="currentColor"/>
+          </svg>
+        </div>
+        <span class="user-name-display" id="user-name-display"></span>
+      </div>
       <section class="stats">
         <div id="count-graphic" class="card">
           <h3>Progreso Personal</h3>
           <div id="progress-bar"><div id="progress-fill"></div></div>
           <p><span id="total-points">0</span> puntos de <span id="max-points">0</span></p>
           <p class="rides-info"><span id="ridden-count">0</span> atracciones de <span id="total-attractions">0</span></p>
+          
+          <!-- Category Progress -->
+          <div class="category-progress">
+            <h4>Progreso por Categorías</h4>
+            <div id="category-stats"></div>
+          </div>
         </div>
         <div id="standing" class="card">
           <h3>Ranking Usuarios</h3>
@@ -53,7 +69,97 @@
         <div id="categories-container"></div>
       </section>
     </div>
+
+    <!-- User Profile Modal -->
+    <div id="profile-modal" class="modal hidden">
+      <div class="modal-overlay"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Personalizar Perfil</h3>
+          <button id="close-modal" class="close-button">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="profile-form">
+            <div class="form-group">
+              <label for="profile-username">Nombre de usuario</label>
+              <input type="text" id="profile-username" placeholder="Tu nombre de usuario" required>
+            </div>
+            <div class="form-group">
+              <label for="profile-password">Nueva contraseña</label>
+              <input type="password" id="profile-password" placeholder="Deja vacío para mantener la actual">
+            </div>
+            <div class="form-group">
+              <label for="profile-confirm-password">Confirmar nueva contraseña</label>
+              <input type="password" id="profile-confirm-password" placeholder="Confirma la nueva contraseña">
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="save-button">Guardar Cambios</button>
+              <button type="button" class="delete-button" id="delete-account">Eliminar Cuenta</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Account Confirmation Modal -->
+    <div id="delete-confirm-modal" class="modal hidden">
+      <div class="modal-overlay"></div>
+      <div class="modal-content confirm-modal">
+        <div class="modal-header">
+          <h3>Confirmar Eliminación</h3>
+          <button id="close-delete-modal" class="close-button">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="confirm-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM13 17H11V15H13V17ZM13 13H11V7H13V13Z" fill="#FF3B30"/>
+            </svg>
+          </div>
+          <div class="confirm-message">
+            <h4>¿Estás seguro?</h4>
+            <p>Esta acción eliminará permanentemente tu cuenta y todos tus datos. Esta acción no se puede deshacer.</p>
+          </div>
+          <div class="confirm-actions">
+            <button type="button" class="cancel-button" id="cancel-delete">Cancelar</button>
+            <button type="button" class="confirm-delete-button" id="confirm-delete">Eliminar Cuenta</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Success Notification Modal -->
+    <div id="success-notification-modal" class="modal hidden">
+      <div class="modal-overlay"></div>
+      <div class="modal-content notification-modal">
+        <div class="modal-body">
+          <div class="notification-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z" fill="#34C759"/>
+            </svg>
+          </div>
+          <div class="notification-message">
+            <h4>¡Éxito!</h4>
+            <p id="notification-text">Cuenta eliminada correctamente</p>
+          </div>
+          <div class="notification-actions">
+            <button type="button" class="notification-button" id="close-notification">Aceptar</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
+  
+  <!-- Toast Notifications Container -->
+  <div id="toast-container" class="toast-container"></div>
+  
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 

@@ -42,35 +42,26 @@ function saveCategoryStates() {
 
 function setupAuth() {
   const form = document.getElementById('auth-form');
-  const toggleLink = document.getElementById('toggle-link');
-  const authTitle = document.getElementById('auth-title');
-  const authButton = document.getElementById('auth-button');
-  let isLogin = true;
-
-  toggleLink.onclick = () => {
-    isLogin = !isLogin;
-    authTitle.textContent = isLogin ? 'Iniciar Sesión' : 'Registro';
-    authButton.textContent = isLogin ? 'Entrar' : 'Registrar';
-    toggleLink.textContent = isLogin ? 'Regístrate' : 'Inicia Sesión';
-  };
 
   form.onsubmit = async e => {
     e.preventDefault();
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
 
-    const snapshot = await dbRef.child('users/' + username).get();
-    const userData = snapshot.val();
+    try {
+      const snapshot = await dbRef.child('users/' + username).get();
+      const userData = snapshot.val();
 
-    if (isLogin) {
-      if (!userData || userData.password !== password) return alert('Usuario o contraseña inválidos');
+      if (!userData || userData.password !== password) {
+        showToast('Usuario o contraseña inválidos', 'error');
+        return;
+      }
+      
       currentUser = { username, ...userData, ridden: userData.ridden || [] };
       showApp();
-    } else {
-      if (userData) return alert('Usuario ya existe');
-      const newUser = { password, ridden: [] };
-      await dbRef.child('users/' + username).set(newUser);
-      alert('Registro exitoso');
+    } catch (error) {
+      console.error('Error durante el login:', error);
+      showToast('Error durante el inicio de sesión. Por favor, intenta de nuevo.', 'error');
     }
   };
 }
@@ -78,10 +69,14 @@ function setupAuth() {
 function logout() {
   const appElement = document.getElementById('app');
   const authElement = document.getElementById('auth');
+  const userProfile = document.getElementById('user-profile');
   
   // Reset any existing animations
   authElement.style.animation = '';
   appElement.style.animation = '';
+  
+  // Hide user profile
+  userProfile.classList.remove('visible');
   
   // Smooth transition with iOS-style animation
   appElement.style.animation = 'slideOutDown 0.3s ease-out forwards';
@@ -120,6 +115,9 @@ function showApp() {
       // Force ranking update immediately
       updateRanking();
       
+      // Setup user profile functionality
+      setupUserProfile();
+      
       // Add success animation to cards
       document.querySelectorAll('.card').forEach((card, index) => {
         setTimeout(() => {
@@ -147,6 +145,9 @@ function renderAttractions() {
   Object.entries(categories).forEach(([categoryName, categoryAttractions], categoryIndex) => {
     const categorySection = document.createElement('div');
     categorySection.className = 'category-section';
+    if (categoryName === 'PA DORMIRSE') {
+      categorySection.classList.add('pa-dormirse');
+    }
     
     // Category header
     const header = document.createElement('div');
@@ -185,6 +186,9 @@ function renderAttractions() {
     
     const attractionsList = document.createElement('ul');
     attractionsList.className = 'category-attractions';
+    if (categoryName === 'PA DORMIRSE') {
+      attractionsList.classList.add('pa-dormirse');
+    }
     
     categoryAttractions.forEach((attr, attrIndex) => {
       const li = document.createElement('li');
@@ -280,7 +284,7 @@ async function toggleRide(index) {
     
   } catch (error) {
     button.classList.remove('loading');
-    alert('Error al actualizar. Inténtalo de nuevo.');
+    showToast('Error al actualizar. Inténtalo de nuevo.', 'error');
   }
 }
 
@@ -298,7 +302,19 @@ function renderStats(users = null) {
   
   document.getElementById('ridden-count').textContent = riddenCount;
   document.getElementById('total-points').textContent = totalPoints;
-  document.getElementById('progress-fill').style.width = pct + '%';
+  
+  const progressFill = document.getElementById('progress-fill');
+  progressFill.style.width = pct + '%';
+  
+  // Add complete class if progress is 100%
+  if (pct >= 100) {
+    progressFill.classList.add('complete');
+  } else {
+    progressFill.classList.remove('complete');
+  }
+  
+  // Render category stats
+  renderCategoryStats();
 
   if (users) {
     const ranking = Object.entries(users).map(([username, data]) => ({
@@ -350,7 +366,7 @@ function renderStats(users = null) {
       // User stats
       const userStats = document.createElement('div');
       userStats.className = 'user-stats';
-      userStats.textContent = `${user.ridden} atracciones completadas`;
+      userStats.textContent = `${user.ridden}/${attractions.length}`;
       
       // Points info
       const pointsInfo = document.createElement('div');
@@ -370,6 +386,14 @@ function renderStats(users = null) {
       const progressPercentage = maxPointsRanking > 0 ? (user.points / maxPointsRanking) * 100 : 0;
       progressFill.style.width = `${progressPercentage}%`;
       
+      // Calculate total possible points
+      const totalPossiblePoints = attractions.reduce((total, attr) => total + attr.points, 0);
+      
+      // Add complete class only if user has ALL possible points
+      if (user.points >= totalPossiblePoints) {
+        progressFill.classList.add('complete');
+      }
+      
       progressContainer.appendChild(progressFill);
       
       // Score display
@@ -380,12 +404,7 @@ function renderStats(users = null) {
       scoreNumber.className = 'score-number';
       scoreNumber.textContent = user.points;
       
-      const scoreLabel = document.createElement('div');
-      scoreLabel.className = 'score-label';
-      scoreLabel.textContent = 'PUNTOS';
-      
       scoreDisplay.appendChild(scoreNumber);
-      scoreDisplay.appendChild(scoreLabel);
       
       // Assemble the ranking item
       const rankingPosition = document.createElement('div');
@@ -435,5 +454,324 @@ function listenForRankingUpdates() {
       currentUser.ridden = allUsers[currentUser.username].ridden || [];
       renderStats(allUsers);
     }
+  });
+}
+
+// User Profile Functions
+function setupUserProfile() {
+  const userProfile = document.getElementById('user-profile');
+  const profileModal = document.getElementById('profile-modal');
+  const closeModal = document.getElementById('close-modal');
+  const profileForm = document.getElementById('profile-form');
+  const deleteAccountBtn = document.getElementById('delete-account');
+  
+  // Update user name display
+  updateUserNameDisplay();
+  
+  // Show user profile in correct position
+  setTimeout(() => {
+    userProfile.classList.add('visible');
+  }, 100);
+  
+  // Open modal on user profile click
+  userProfile.addEventListener('click', () => {
+    openProfileModal();
+  });
+  
+  // Close modal
+  closeModal.addEventListener('click', () => {
+    closeProfileModal();
+  });
+  
+  // Close modal on overlay click
+  profileModal.querySelector('.modal-overlay').addEventListener('click', (e) => {
+    if (e.target.classList.contains('modal-overlay')) {
+      closeProfileModal();
+    }
+  });
+  
+  // Handle form submission
+  profileForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await updateUserProfile();
+  });
+  
+  // Handle account deletion
+  deleteAccountBtn.addEventListener('click', () => {
+    openDeleteConfirmModal();
+  });
+}
+
+function updateUserNameDisplay() {
+  const userNameDisplay = document.getElementById('user-name-display');
+  if (currentUser && userNameDisplay) {
+    userNameDisplay.textContent = currentUser.username;
+  }
+}
+
+function openProfileModal() {
+  const modal = document.getElementById('profile-modal');
+  const usernameInput = document.getElementById('profile-username');
+  const passwordInput = document.getElementById('profile-password');
+  const confirmPasswordInput = document.getElementById('profile-confirm-password');
+  
+  // Fill current values
+  usernameInput.value = currentUser.username;
+  passwordInput.value = '';
+  confirmPasswordInput.value = '';
+  
+  // Show modal
+  modal.classList.remove('hidden');
+}
+
+function closeProfileModal() {
+  const modal = document.getElementById('profile-modal');
+  modal.classList.add('hidden');
+}
+
+async function updateUserProfile() {
+  const usernameInput = document.getElementById('profile-username');
+  const passwordInput = document.getElementById('profile-password');
+  const confirmPasswordInput = document.getElementById('profile-confirm-password');
+  
+  const newUsername = usernameInput.value.trim();
+  const newPassword = passwordInput.value;
+  const confirmPassword = confirmPasswordInput.value;
+  
+  // Validation
+  if (!newUsername) {
+    showToast('El nombre de usuario no puede estar vacío', 'error');
+    return;
+  }
+  
+  if (newPassword && newPassword !== confirmPassword) {
+    showToast('Las contraseñas no coinciden', 'error');
+    return;
+  }
+  
+  if (newPassword && newPassword.length < 6) {
+    showToast('La contraseña debe tener al menos 6 caracteres', 'error');
+    return;
+  }
+  
+  try {
+    // Check if new username already exists (if username is changing)
+    if (newUsername !== currentUser.username) {
+      const snapshot = await dbRef.child('users/' + newUsername).get();
+          if (snapshot.exists()) {
+      showToast('El nombre de usuario ya existe', 'error');
+      return;
+    }
+    }
+    
+    // Prepare update data
+    const updateData = {};
+    
+    // If username is changing, we need to move the data
+    if (newUsername !== currentUser.username) {
+      // Copy current user data to new username
+      const currentUserData = {
+        password: newPassword || currentUser.password,
+        ridden: currentUser.ridden || []
+      };
+      
+      // Set new user data
+      await dbRef.child('users/' + newUsername).set(currentUserData);
+      
+      // Remove old user data
+      await dbRef.child('users/' + currentUser.username).remove();
+      
+      // Update current user
+      currentUser.username = newUsername;
+      currentUser.password = currentUserData.password;
+    } else if (newPassword) {
+      // Only update password
+      await dbRef.child('users/' + currentUser.username + '/password').set(newPassword);
+      currentUser.password = newPassword;
+    }
+    
+    // Update display
+    updateUserNameDisplay();
+    
+    // Close modal
+    closeProfileModal();
+    
+    // Show success message
+    showToast('Perfil actualizado correctamente', 'success');
+    
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    showToast('Error al actualizar el perfil. Inténtalo de nuevo.', 'error');
+  }
+}
+
+function openDeleteConfirmModal() {
+  const deleteConfirmModal = document.getElementById('delete-confirm-modal');
+  const closeDeleteModal = document.getElementById('close-delete-modal');
+  const cancelDeleteBtn = document.getElementById('cancel-delete');
+  const confirmDeleteBtn = document.getElementById('confirm-delete');
+  
+  // Close profile modal
+  closeProfileModal();
+  
+  // Show delete confirmation modal
+  deleteConfirmModal.classList.remove('hidden');
+  
+  // Close modal handlers
+  closeDeleteModal.addEventListener('click', closeDeleteConfirmModal);
+  cancelDeleteBtn.addEventListener('click', closeDeleteConfirmModal);
+  
+  // Confirm deletion
+  confirmDeleteBtn.addEventListener('click', async () => {
+    await deleteUserAccount();
+  });
+  
+  // Close on overlay click
+  deleteConfirmModal.querySelector('.modal-overlay').addEventListener('click', (e) => {
+    if (e.target.classList.contains('modal-overlay')) {
+      closeDeleteConfirmModal();
+    }
+  });
+}
+
+function closeDeleteConfirmModal() {
+  const deleteConfirmModal = document.getElementById('delete-confirm-modal');
+  deleteConfirmModal.classList.add('hidden');
+}
+
+async function deleteUserAccount() {
+  try {
+    // Remove user data from database
+    await dbRef.child('users/' + currentUser.username).remove();
+    
+    // Close modal
+    closeDeleteConfirmModal();
+    
+    // Show success notification
+    showSuccessNotification('Cuenta eliminada correctamente');
+    
+    // Logout user after a short delay
+    setTimeout(() => {
+      logout();
+    }, 1500);
+    
+  } catch (error) {
+    console.error('Error deleting account:', error);
+    showSuccessNotification('Error al eliminar la cuenta. Inténtalo de nuevo.');
+  }
+}
+
+// Toast Notification System
+function showToast(message, type = 'info', duration = 4000) {
+  const container = document.getElementById('toast-container');
+  
+  // Create toast element
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  
+  // Get icon based on type
+  const icon = getToastIcon(type);
+  
+  toast.innerHTML = `
+    <div class="toast-icon">
+      ${icon}
+    </div>
+    <div class="toast-message">${message}</div>
+    <button class="toast-close" onclick="this.parentElement.remove()">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z" fill="currentColor"/>
+      </svg>
+    </button>
+  `;
+  
+  // Add to container
+  container.appendChild(toast);
+  
+  // Trigger animation
+  setTimeout(() => {
+    toast.classList.add('show');
+  }, 10);
+  
+  // Auto remove after duration
+  setTimeout(() => {
+    if (toast.parentElement) {
+      toast.classList.remove('show');
+      setTimeout(() => {
+        if (toast.parentElement) {
+          toast.remove();
+        }
+      }, 400);
+    }
+  }, duration);
+}
+
+function getToastIcon(type) {
+  switch (type) {
+    case 'success':
+      return `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z" fill="currentColor"/>
+      </svg>`;
+    case 'error':
+      return `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM13 17H11V15H13V17ZM13 13H11V7H13V13Z" fill="currentColor"/>
+      </svg>`;
+    case 'warning':
+      return `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M1 21H23L12 2L1 21ZM13 18H11V16H13V18ZM13 14H11V12H13V14Z" fill="currentColor"/>
+      </svg>`;
+    case 'info':
+    default:
+      return `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM13 17H11V15H13V17ZM13 13H11V7H13V13Z" fill="currentColor"/>
+      </svg>`;
+  }
+}
+
+function showSuccessNotification(message) {
+  showToast(message, 'success');
+}
+
+function renderCategoryStats() {
+  const categoryStatsContainer = document.getElementById('category-stats');
+  if (!categoryStatsContainer) return;
+  
+  // Group attractions by category
+  const categories = {};
+  attractions.forEach((attr, index) => {
+    if (!categories[attr.category]) {
+      categories[attr.category] = {
+        name: attr.category,
+        color: attr.color,
+        total: 0,
+        completed: 0
+      };
+    }
+    categories[attr.category].total++;
+    
+    // Check if this attraction is completed
+    if (currentUser.ridden && currentUser.ridden.includes(index)) {
+      categories[attr.category].completed++;
+    }
+  });
+  
+  // Clear container
+  categoryStatsContainer.innerHTML = '';
+  
+  // Create category stat elements
+  Object.values(categories).forEach(category => {
+    const categoryStat = document.createElement('div');
+    categoryStat.className = 'category-stat';
+    
+    const colorDot = document.createElement('div');
+    colorDot.className = `category-stat-color ${category.color}`;
+    
+    const categoryCount = document.createElement('div');
+    categoryCount.className = 'category-stat-count';
+    categoryCount.textContent = `${category.completed}/${category.total}`;
+    
+    categoryStat.appendChild(colorDot);
+    categoryStat.appendChild(categoryCount);
+    
+    categoryStatsContainer.appendChild(categoryStat);
   });
 }

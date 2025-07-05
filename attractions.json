@@ -84,25 +84,13 @@
     "color": "green"
   },
   {
-    "name": "Port De La Drassana",
-    "category": "PA DORMIRSE",
-    "points": 1,
-    "color": "green"
-  },
-  {
-    "name": "Dino Scape 4D",
-    "category": "PA DORMIRSE",
-    "points": 1,
-    "color": "green"
-  },
-  {
-    "name": "Hysteria in Boothill",
-    "category": "PA DORMIRSE",
-    "points": 1,
-    "color": "green"
-  },
-  {
     "name": "Templo del Fuego",
+    "category": "PA DORMIRSE",
+    "points": 1,
+    "color": "green"
+  },
+  {
+    "name": "Grand Canyon Rapids",
     "category": "PA DORMIRSE",
     "points": 1,
     "color": "green"
@@ -144,28 +132,10 @@
     "color": "yellow"
   },
   {
-    "name": "Grand Canyon Rapids",
-    "category": "CUIDAO CHICOS",
-    "points": 2,
-    "color": "yellow"
-  },
-  {
     "name": "Crazy Barrels",
     "category": "CUIDAO CHICOS",
     "points": 2,
     "color": "yellow"
-  },
-  {
-    "name": "Tutuki Splash",
-    "category": "CUIDAO CHICOS",
-    "points": 2,
-    "color": "yellow"
-  },
-  {
-    "name": "Dragon Khan",
-    "category": "NIVEL RICK",
-    "points": 3,
-    "color": "orange"
   },
   {
     "name": "Stampida",
@@ -178,6 +148,18 @@
     "category": "NIVEL RICK",
     "points": 3,
     "color": "orange"
+  },
+  {
+    "name": "Tutuki Splash",
+    "category": "NIVEL RICK",
+    "points": 3,
+    "color": "orange"
+  },
+  {
+    "name": "Dragon Khan",
+    "category": "PEROLAS DEMONIACAS",
+    "points": 4,
+    "color": "red"
   },
   {
     "name": "Red Force",
