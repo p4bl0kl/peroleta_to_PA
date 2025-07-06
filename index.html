@@ -29,22 +29,10 @@
 </head>
 <body>
   <div class="container">
-    <!-- Auth Section -->
-    <div id="auth" class="card">
-      <h2 id="auth-title">Iniciar Sesión</h2>
-      <form id="auth-form">
-        <input type="text" id="username" placeholder="Usuario" required>
-        <input type="password" id="password" placeholder="Contraseña" required>
-        <div class="remember-session">
-          <label for="remember-session">
-            <input type="checkbox" id="remember-session" checked>
-            <span class="checkmark"></span>
-            Recordar sesión
-          </label>
-        </div>
-        <button type="submit" id="auth-button">Entrar</button>
-      </form>
-      <p id="toggle-auth">¿No tienes cuenta? <a href="registro.html" id="toggle-link">Regístrate</a></p>
+    <!-- Loading Section -->
+    <div id="loading" class="card">
+      <div class="loading-spinner"></div>
+      <p>Verificando sesión...</p>
     </div>
 
     <!-- Floating User Profile (outside app to prevent flickering) -->

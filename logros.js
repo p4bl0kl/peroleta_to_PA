@@ -77,12 +77,14 @@ window.addEventListener('DOMContentLoaded', async () => {
       }
     }
     
-    // Si no hay sesión válida, redirigir a index.html
-    window.location.href = 'index.html';
+    // Si no hay sesión válida, redirigir a login.html
+    window.location.href = 'login.html';
   } catch (error) {
     console.error('Error en la carga inicial:', error);
-    // En caso de error, también redirigir a index.html
-    window.location.href = 'index.html';
+    // En caso de error, también redirigir a login.html
+    setTimeout(() => {
+      window.location.href = 'login.html';
+    }, 2000);
   }
 });
 
@@ -365,13 +367,8 @@ function setupNavigation() {
 }
 
 function logout() {
-  const userProfile = document.getElementById('user-profile-achievements');
-  
   // Disconnect Firebase listener
   dbRef.child('users').off('value');
-  
-  // Hide user profile
-  userProfile.classList.remove('visible');
   
   // Clear current user
   currentUser = null;
@@ -379,8 +376,8 @@ function logout() {
   // Clear session
   clearSession();
   
-  // Redirect to index.html
-  window.location.href = 'index.html';
+  // Redirect to login page
+  window.location.href = 'login.html';
 }
 
 // Toast Notification System

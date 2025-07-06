@@ -29,7 +29,7 @@
         <div id="password-error" class="error-message hidden"></div>
         <button type="submit" id="auth-button">Registrar</button>
       </form>
-      <p id="toggle-auth">¿Ya tienes cuenta? <a href="index.html" id="toggle-link">Inicia Sesión</a></p>
+      <p id="toggle-auth">¿Ya tienes cuenta? <a href="login.html" id="toggle-link">Inicia Sesión</a></p>
     </div>
   </div>
   
@@ -204,7 +204,7 @@
           // Redirigir al login con mensaje de éxito
           showToast('¡Registro exitoso! Ahora puedes iniciar sesión.', 'success');
           setTimeout(() => {
-            window.location.href = 'index.html';
+            window.location.href = 'login.html';
           }, 1500);
           
         } catch (error) {

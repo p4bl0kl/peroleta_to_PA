@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Contador Montañas Rusas - PortAventura</title>
+  
+  <link rel="icon" type="image/jpeg" href="mclovin.jpg">
+  <link rel="shortcut icon" type="image/jpeg" href="mclovin.jpg">
+  <link rel="apple-touch-icon" href="mclovin.jpg">
+  
+  <meta property="og:title" content="Login - Contador Montañas Rusas - PortAventura">
+  <meta property="og:description" content="Inicia sesión para contar tus montañas rusas en PortAventura">
+  <meta property="og:image" content="mclovin.jpg">
+  <meta property="og:url" content="">
+  <meta property="og:type" content="website">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Peroleta a PA">
+
+  <link rel="apple-touch-icon" href="mclovin.jpg">
+  <link rel="manifest" href="/manifest.json">
+  
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Auth Section -->
+    <div id="auth" class="card">
+      <h2 id="auth-title">Iniciar Sesión</h2>
+      <form id="auth-form">
+        <input type="text" id="username" placeholder="Usuario" required>
+        <input type="password" id="password" placeholder="Contraseña" required>
+        <div class="remember-session">
+          <label for="remember-session">
+            <input type="checkbox" id="remember-session" checked>
+            <span class="checkmark"></span>
+            Recordar sesión
+          </label>
+        </div>
+        <button type="submit" id="auth-button">Entrar</button>
+      </form>
+      <p id="toggle-auth">¿No tienes cuenta? <a href="registro.html" id="toggle-link">Regístrate</a></p>
+    </div>
+  </div>
+  
+  <!-- Toast Notifications Container -->
+  <div id="toast-container" class="toast-container"></div>
+  
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <script>
+    // Configuración de Firebase (pública)
+    const firebaseConfig = {
+      apiKey: "AIzaSyB4wgAaS1yXBe-5G-rjDtZbw7ccF4Z2C78",
+      authDomain: "portaventura-dbab9.firebaseapp.com",
+      databaseURL: "https://portaventura-dbab9-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "portaventura-dbab9",
+      storageBucket: "portaventura-dbab9.firebasestorage.app",
+      messagingSenderId: "187042610072",
+      appId: "1:187042610072:web:19669892ee3dfd8e9049ed",
+      measurementId: "G-CZK1FRL7QB"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+
+    let dbRef = firebase.database().ref();
+
+    window.addEventListener('DOMContentLoaded', () => {
+      // Verificar si ya hay una sesión activa
+      const savedSession = getSavedSession();
+      if (savedSession) {
+        validateAndRedirect(savedSession);
+      } else {
+        setupAuth();
+      }
+    });
+
+    // Funciones para manejar cookies de sesión
+    function setCookie(name, value, days = 30) {
+      const expires = new Date();
+      expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+      document.cookie = `${name}=${encodeURIComponent(JSON.stringify(value))};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
+    }
+
+    function getCookie(name) {
+      const nameEQ = name + "=";
+      const ca = document.cookie.split(';');
+      for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) {
+          try {
+            return JSON.parse(decodeURIComponent(c.substring(nameEQ.length, c.length)));
+          } catch (error) {
+            console.error('Error parsing cookie:', error);
+            return null;
+          }
+        }
+      }
+      return null;
+    }
+
+    function deleteCookie(name) {
+      document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
+    }
+
+    function saveSession(username, password) {
+      setCookie('portaventura_session', { username, password });
+    }
+
+    function getSavedSession() {
+      return getCookie('portaventura_session');
+    }
+
+    function clearSession() {
+      deleteCookie('portaventura_session');
+    }
+
+    async function validateAndRedirect(savedSession) {
+      try {
+        const snapshot = await dbRef.child('users/' + savedSession.username).get();
+        const userData = snapshot.val();
+        
+        if (userData && userData.password === savedSession.password) {
+          // Sesión válida, redirigir a index.html
+          window.location.href = 'index.html';
+          return;
+        }
+      } catch (error) {
+        console.error('Error validando sesión guardada:', error);
+        clearSession();
+      }
+      
+      // Si no hay sesión válida, mostrar login
+      setupAuth();
+    }
+
+    function setupAuth() {
+      const form = document.getElementById('auth-form');
+
+      // Clear any existing event handlers
+      form.onsubmit = null;
+
+      form.onsubmit = async e => {
+        e.preventDefault();
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const rememberSession = document.getElementById('remember-session').checked;
+
+        // Disable form during submission
+        const submitButton = form.querySelector('button[type="submit"]');
+        const originalText = submitButton.textContent;
+        submitButton.disabled = true;
+        submitButton.textContent = 'Entrando...';
+
+        try {
+          const snapshot = await dbRef.child('users/' + username).get();
+          const userData = snapshot.val();
+
+          if (!userData || userData.password !== password) {
+            showToast('Usuario o contraseña inválidos', 'error');
+            return;
+          }
+          
+          // Guardar sesión en cookies solo si está marcado "Recordar sesión"
+          if (rememberSession) {
+            saveSession(username, password);
+          } else {
+            // Si no está marcado, limpiar cualquier sesión anterior
+            clearSession();
+          }
+          
+          // Redirigir a index.html después del login exitoso
+          window.location.href = 'index.html';
+        } catch (error) {
+          console.error('Error durante el login:', error);
+          showToast('Error durante el inicio de sesión. Por favor, intenta de nuevo.', 'error');
+        } finally {
+          // Re-enable form
+          submitButton.disabled = false;
+          submitButton.textContent = originalText;
+        }
+      };
+    }
+
+    // Toast Notification System
+    function showToast(message, type = 'info', duration = 4000) {
+      const container = document.getElementById('toast-container');
+      
+      // Create toast element
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      
+      // Get icon based on type
+      const icon = getToastIcon(type);
+      
+      toast.innerHTML = `
+        <div class="toast-icon">
+          ${icon}
+        </div>
+        <div class="toast-message">${message}</div>
+        <button class="toast-close" onclick="this.parentElement.remove()">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z" fill="currentColor"/>
+          </svg>
+        </button>
+      `;
+      
+      // Add to container
+      container.appendChild(toast);
+      
+      // Trigger animation
+      setTimeout(() => {
+        toast.classList.add('show');
+      }, 10);
+      
+      // Auto remove after duration
+      setTimeout(() => {
+        if (toast.parentElement) {
+          toast.classList.remove('show');
+          setTimeout(() => {
+            if (toast.parentElement) {
+              toast.remove();
+            }
+          }, 400);
+        }
+      }, duration);
+    }
+
+    function getToastIcon(type) {
+      switch (type) {
+        case 'success':
+          return `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z" fill="currentColor"/>
+          </svg>`;
+        case 'error':
+          return `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM13 17H11V15H13V17ZM13 13H11V7H13V13Z" fill="currentColor"/>
+          </svg>`;
+        case 'warning':
+          return `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M1 21H23L12 2L1 21ZM13 18H11V16H13V18ZM13 14H11V12H13V14Z" fill="currentColor"/>
+          </svg>`;
+        case 'info':
+        default:
+          return `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM13 17H11V15H13V17ZM13 13H11V7H13V13Z" fill="currentColor"/>
+          </svg>`;
+      }
+    }
+  </script>
+</body>
+</html> 

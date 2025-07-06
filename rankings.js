@@ -4,6 +4,53 @@ let attractions = [];
 let allUsers = {};
 let attractionsChart = null;
 
+// Verificación de sesión al cargar la página
+window.addEventListener('DOMContentLoaded', async () => {
+  try {
+    // Cargar atracciones
+    attractions = await fetch('attractions.json').then(r => r.json());
+    
+    // Verificar si hay una sesión guardada
+    const savedSession = getSavedSession();
+    if (savedSession) {
+      try {
+        // Intentar validar la sesión guardada
+        const snapshot = await dbRef.child('users/' + savedSession.username).get();
+        const userData = snapshot.val();
+        
+        if (userData && userData.password === savedSession.password) {
+          // Sesión válida, cargar datos
+          currentUser = { 
+            username: savedSession.username, 
+            ...userData, 
+            ridden: userData.ridden || [],
+            rideCounts: userData.rideCounts || {}
+          };
+          
+          // Cargar datos de todos los usuarios
+          await loadAllUsers();
+          
+          // Mostrar rankings
+          showRankings();
+          return;
+        }
+      } catch (error) {
+        console.error('Error validando sesión guardada:', error);
+        clearSession();
+      }
+    }
+    
+    // Si no hay sesión válida, redirigir a login
+    window.location.href = 'login.html';
+  } catch (error) {
+    console.error('Error en la carga inicial:', error);
+    showToast('Error al cargar la aplicación. Recarga la página.', 'error');
+    setTimeout(() => {
+      window.location.href = 'login.html';
+    }, 2000);
+  }
+});
+
 // Funciones para manejar cookies de sesión
 function setCookie(name, value, days = 30) {
   const expires = new Date();
@@ -540,13 +587,8 @@ function goBack() {
 }
 
 function logout() {
-  const userProfile = document.getElementById('user-profile-rankings');
-  
   // Disconnect Firebase listener
   dbRef.child('users').off('value');
-  
-  // Hide user profile
-  userProfile.classList.remove('visible');
   
   // Clear current user
   currentUser = null;
@@ -554,53 +596,11 @@ function logout() {
   // Clear session
   clearSession();
   
-  // Redirect to index.html
-  window.location.href = 'index.html';
+  // Redirect to login page
+  window.location.href = 'login.html';
 }
 
-// Event listeners
-window.addEventListener('DOMContentLoaded', async () => {
-  try {
-    // Cargar atracciones
-    attractions = await fetch('attractions.json').then(r => r.json());
-    
-    // Verificar si hay una sesión guardada
-    const savedSession = getSavedSession();
-    if (savedSession) {
-      try {
-        // Intentar validar la sesión guardada
-        const snapshot = await dbRef.child('users/' + savedSession.username).get();
-        const userData = snapshot.val();
-        
-        if (userData && userData.password === savedSession.password) {
-          // Sesión válida, iniciar automáticamente
-          currentUser = { 
-            username: savedSession.username, 
-            ...userData, 
-            ridden: userData.ridden || [],
-            rideCounts: userData.rideCounts || {}
-          };
-          
-          // Cargar datos de todos los usuarios y mostrar rankings
-          await loadAllUsers();
-          showRankings();
-          return;
-        }
-      } catch (error) {
-        console.error('Error validando sesión guardada:', error);
-        // Limpiar sesión inválida
-        clearSession();
-      }
-    }
-    
-    // Si no hay sesión válida, redirigir a index.html
-    window.location.href = 'index.html';
-  } catch (error) {
-    console.error('Error en la carga inicial:', error);
-    // En caso de error, también redirigir a index.html
-    window.location.href = 'index.html';
-  }
-});
+
 
 // Setup navigation buttons when rankings app is shown
 function setupNavigation() {

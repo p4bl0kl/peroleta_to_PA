@@ -41,16 +41,15 @@ window.addEventListener('DOMContentLoaded', async () => {
       }
     }
     
-    // Si no hay sesión válida, mostrar login
-    setupAuth();
-    
-    // Ensure auth element is visible and reset animations
-    const authElement = document.getElementById('auth');
-    authElement.style.animation = '';
-    authElement.classList.remove('hidden');
+    // Si no hay sesión válida, redirigir a login
+    window.location.href = 'login.html';
   } catch (error) {
     console.error('Error en la carga inicial:', error);
     showToast('Error al cargar la aplicación. Recarga la página.', 'error');
+    // En caso de error, también redirigir a login
+    setTimeout(() => {
+      window.location.href = 'login.html';
+    }, 2000);
   }
 });
 
@@ -115,134 +114,31 @@ function clearSession() {
   deleteCookie('portaventura_session');
 }
 
-function setupAuth() {
-  const form = document.getElementById('auth-form');
 
-  // Clear any existing event handlers
-  form.onsubmit = null;
-
-  form.onsubmit = async e => {
-    e.preventDefault();
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-    const rememberSession = document.getElementById('remember-session').checked;
-
-    // Disable form during submission
-    const submitButton = form.querySelector('button[type="submit"]');
-    const originalText = submitButton.textContent;
-    submitButton.disabled = true;
-    submitButton.textContent = 'Entrando...';
-
-    try {
-      const snapshot = await dbRef.child('users/' + username).get();
-      const userData = snapshot.val();
-
-      if (!userData || userData.password !== password) {
-        showToast('Usuario o contraseña inválidos', 'error');
-        return;
-      }
-      
-      currentUser = { 
-        username, 
-        ...userData, 
-        ridden: userData.ridden || [],
-        rideCounts: userData.rideCounts || {} // Nuevo campo para contar veces montadas
-      };
-      
-      // Guardar sesión en cookies solo si está marcado "Recordar sesión"
-      if (rememberSession) {
-        saveSession(username, password);
-      } else {
-        // Si no está marcado, limpiar cualquier sesión anterior
-        clearSession();
-      }
-      
-      // Cargar datos de todos los usuarios ANTES de mostrar la app
-      await updateRanking();
-      
-      showApp();
-    } catch (error) {
-      console.error('Error durante el login:', error);
-      showToast('Error durante el inicio de sesión. Por favor, intenta de nuevo.', 'error');
-    } finally {
-      // Re-enable form
-      submitButton.disabled = false;
-      submitButton.textContent = originalText;
-    }
-  };
-}
 
 function logout() {
-  const appElement = document.getElementById('app');
-  const authElement = document.getElementById('auth');
-  const userProfile = document.getElementById('user-profile');
-  
   // Disconnect Firebase listener
   dbRef.child('users').off('value');
   
-  // Reset any existing animations
-  authElement.style.animation = '';
-  appElement.style.animation = '';
+  // Clear current user
+  currentUser = null;
   
-  // Hide user profile
-  userProfile.classList.remove('visible');
+  // Clear session
+  clearSession();
   
-  // Smooth transition with iOS-style animation
-  appElement.style.animation = 'slideOutDown 0.3s ease-out forwards';
-  
-  setTimeout(() => {
-    appElement.classList.add('hidden');
-    authElement.classList.remove('hidden');
-    authElement.style.animation = 'slideInUp 0.5s ease-out';
-    
-    // Reset form fields
-    document.getElementById('username').value = '';
-    document.getElementById('password').value = '';
-    document.getElementById('remember-session').checked = true; // Reset checkbox
-    
-    // Clear session cookies
-    clearSession();
-    
-    // Reset auth state
-    currentUser = null;
-    window.allUsers = null; // Limpiar datos de usuarios
-    
-    // Reset form submission handler
-    const form = document.getElementById('auth-form');
-    form.onsubmit = null;
-    
-    // Clear any existing event listeners
-    const logoutBtn = document.getElementById('logout');
-    if (logoutBtn) {
-      logoutBtn.onclick = null;
-    }
-    
-    const rankingBtn = document.getElementById('ranking-button');
-    if (rankingBtn) {
-      rankingBtn.onclick = null;
-    }
-    
-    // Re-setup auth
-    setupAuth();
-    
-    // Ensure form is ready for new login
-    const usernameField = document.getElementById('username');
-    const passwordField = document.getElementById('password');
-    if (usernameField && passwordField) {
-      usernameField.focus();
-    }
-  }, 300);
+  // Redirect to login page
+  window.location.href = 'login.html';
 }
 
 function showApp() {
-  const authElement = document.getElementById('auth');
+  const loadingElement = document.getElementById('loading');
   const appElement = document.getElementById('app');
   
   // Smooth transition with iOS-style animation
-  authElement.style.animation = 'fadeOut 0.3s ease-out forwards';
+  loadingElement.style.animation = 'fadeOut 0.3s ease-out forwards';
   
   setTimeout(() => {
-    authElement.classList.add('hidden');
+    loadingElement.classList.add('hidden');
     appElement.classList.remove('hidden');
     appElement.style.animation = 'slideInUp 0.5s ease-out';
     
