@@ -713,7 +713,7 @@ header h1 {
   transition: all var(--transition-fast);
   min-width: 40px;
   height: 40px;
-  margin-top: 0;
+  margin-top: -4px;
 }
 
 .achievements-btn:hover {
@@ -745,7 +745,7 @@ header h1 {
   transition: all var(--transition-fast);
   min-width: 40px;
   height: 40px;
-  margin-top: 0;
+  margin-top: -4px;
 }
 
 .ranking-btn:hover {
@@ -763,6 +763,104 @@ header h1 {
 .ranking-btn svg {
   width: 20px;
   height: 20px;
+}
+
+/* Help Button Styles */
+.attractions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.help-btn {
+  background: var(--background-tertiary);
+  color: var(--primary-blue);
+  border: 2px solid var(--primary-blue);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  min-width: 40px;
+  height: 40px;
+  margin-top: -20px;
+}
+
+.help-btn:hover {
+  background: var(--primary-blue);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+}
+
+.help-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2);
+}
+
+.help-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Help Modal Styles */
+.help-section {
+  margin-bottom: var(--spacing-xl);
+}
+
+.help-section:last-child {
+  margin-bottom: 0;
+}
+
+.help-section h4 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-md);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.help-section p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: var(--spacing-md);
+}
+
+.help-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.help-section li {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: var(--spacing-sm);
+  padding-left: var(--spacing-md);
+  position: relative;
+}
+
+.help-section li:before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: var(--primary-blue);
+  font-weight: bold;
+}
+
+.help-section li:last-child {
+  margin-bottom: 0;
+}
+
+.help-section strong {
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 /* Ranking Title */
@@ -1241,6 +1339,10 @@ input:focus {
   max-height: 2000px;
 }
 
+.pa-dormirse .category-content.collapsed {
+  max-height: 0;
+}
+
 /* Modal Styles */
 .modal {
   position: fixed;
@@ -1524,10 +1626,22 @@ input:focus {
   
   .ranking-btn {
     align-self: center;
+    margin-top: -30px;
   }
   
   .achievements-btn {
     align-self: center;
+  }
+  
+  .attractions-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+  }
+  
+  .help-btn {
+    align-self: flex-end;
+    margin-top: -75px;
   }
 }
 

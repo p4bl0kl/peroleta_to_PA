@@ -155,39 +155,52 @@ function getToastIcon(type) {
 
 // Funciones de cálculo de puntos
 function calculatePoints(riddenIndices, rideCounts = {}) {
-  let totalPoints = 0;
-  riddenIndices.forEach(index => {
-    if (attractions[index]) {
-      totalPoints += attractions[index].points;
+  return riddenIndices.reduce((total, index) => {
+    const basePoints = attractions[index]?.points || 0;
+    const rideCount = rideCounts[index] || 0;
+    
+    // Solo dar puntos si se ha montado al menos una vez
+    if (rideCount > 0) {
+      return total + basePoints;
     }
-  });
-  return totalPoints;
+    
+    return total;
+  }, 0);
 }
 
 function calculatePointsWithBonuses(riddenIndices, rideCounts = {}, allUsers = null) {
-  let totalPoints = calculatePoints(riddenIndices, rideCounts);
+  let totalPoints = 0;
   
-  if (!allUsers) return totalPoints;
-  
-  // Bonus por ser líder en atracciones
   riddenIndices.forEach(index => {
+    const basePoints = attractions[index]?.points || 0;
     const rideCount = rideCounts[index] || 0;
+    
     if (rideCount > 0) {
-      const maxRideCount = Math.max(...Object.values(allUsers).map(user => 
-        user.rideCounts?.[index] || 0
-      ));
+      let points = basePoints;
       
-      const usersWithMaxCount = Object.values(allUsers).filter(user => 
-        (user.rideCounts?.[index] || 0) === maxRideCount && maxRideCount > 0
-      );
-      
-      if (rideCount === maxRideCount && maxRideCount > 0) {
-        if (usersWithMaxCount.length === 1) {
-          totalPoints += 10; // Bonus por corona única
-        } else {
-          totalPoints += 5; // Bonus por empate
+      // Verificar si es el que más veces se ha montado
+      if (allUsers) {
+        const maxRideCount = Math.max(...Object.values(allUsers).map(user => 
+          user.rideCounts?.[index] || 0
+        ));
+        
+        const usersWithMaxCount = Object.values(allUsers).filter(user => 
+          (user.rideCounts?.[index] || 0) === maxRideCount && maxRideCount > 0
+        );
+        
+        // Si este usuario está entre los que más veces se han montado
+        if (rideCount === maxRideCount && maxRideCount > 0) {
+          // Duplicar puntos si es el único, o dividir entre los que empatan
+          if (usersWithMaxCount.length === 1) {
+            points = basePoints * 2;
+          } else {
+            // En caso de empate, todos reciben la duplicación
+            points = basePoints * 2;
+          }
         }
       }
+      
+      totalPoints += points;
     }
   });
   

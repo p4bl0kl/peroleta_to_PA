@@ -88,7 +88,14 @@
         </div>
       </section>
       <section id="attractions-list" class="card">
-        <h3>Lista de Atracciones por Categorías</h3>
+        <div class="attractions-header">
+          <h3>Lista de Atracciones</h3>
+          <button id="help-button" class="help-btn" title="Ver Instrucciones">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM13 17H11V15H13V17ZM13 13H11V7H13V13Z" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
         <div id="categories-container"></div>
       </section>
     </div>
@@ -174,6 +181,71 @@
           </div>
           <div class="notification-actions">
             <button type="button" class="notification-button" id="close-notification">Aceptar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="help-modal" class="modal hidden">
+      <div class="modal-overlay"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>¿Cómo Funciona?</h3>
+          <button id="close-help-modal" class="close-button">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="help-section">
+            <h4>Sistema de Puntos</h4>
+            <p>Cada atracción tiene un valor en puntos. Solo obtienes puntos cuando realmente te montas en la atracción (no solo por marcarla).</p>
+            <ul>
+              <li><strong>Puntos base:</strong> Cada atracción vale entre 1-5 puntos según su intensidad</li>
+              <li><strong>Bonus por liderazgo:</strong> Si eres el que más veces se ha montado en una atracción, duplicas los puntos</li>
+              <li><strong>Empates:</strong> Si varios usuarios empatan en el liderazgo, todos duplican los puntos</li>
+            </ul>
+          </div>
+          
+          <div class="help-section">
+            <h4>Coronas y Handshakes</h4>
+            <p>Estos indicadores muestran tu liderazgo en las atracciones:</p>
+            <ul>
+              <li><strong>👑 Corona:</strong> Eres el único líder de una atracción (nadie más se ha montado tantas veces)</li>
+              <li><strong>🤝 Handshake:</strong> Empatas con otros usuarios en el liderazgo de una atracción</li>
+            </ul>
+          </div>
+          
+          <div class="help-section">
+            <h4>Contadores de Veces Montado</h4>
+            <p>Los badges de colores muestran cuántas veces te has montado en cada atracción:</p>
+            <ul>
+              <li><strong>Bronce (×1):</strong> Primera vez montado</li>
+              <li><strong>Plata (×2):</strong> Segunda vez montado</li>
+              <li><strong>Oro (×3+):</strong> Tercera vez o más</li>
+            </ul>
+          </div>
+          
+          <div class="help-section">
+            <h4>Logros</h4>
+            <p>Completa desafíos específicos para desbloquear logros:</p>
+            <ul>
+              <li><strong>Logros por categoría:</strong> Monta todas las atracciones de una categoría</li>
+              <li><strong>Logros de liderazgo:</strong> Sé líder en múltiples atracciones</li>
+              <li><strong>Logros de variedad:</strong> Monta atracciones de diferentes categorías</li>
+            </ul>
+          </div>
+          
+          <div class="help-section">
+            <h4>💡 Consejos</h4>
+            <ul>
+              <li>Usa los botones + y - para ajustar el número de veces que te has montado</li>
+              <li>Las categorías se pueden colapsar haciendo clic en el encabezado</li>
+              <li>Tu progreso se guarda automáticamente</li>
+              <li>Compara tu progreso con otros usuarios en el ranking</li>
+            </ul>
           </div>
         </div>
       </div>

@@ -178,6 +178,9 @@ function showApp() {
         // Setup achievements button
         document.getElementById('achievements-button').onclick = goToAchievements;
         
+        // Setup help button
+        document.getElementById('help-button').onclick = openHelpModal;
+        
         // Start listening for ranking updates
         listenForRankingUpdates();
         
@@ -1080,4 +1083,21 @@ function goToRankings() {
 
 function goToAchievements() {
   window.location.href = 'logros.html';
+}
+
+// Help Modal Functions
+function openHelpModal() {
+  const modal = document.getElementById('help-modal');
+  modal.classList.remove('hidden');
+  
+  // Setup close button
+  document.getElementById('close-help-modal').onclick = closeHelpModal;
+  
+  // Close on overlay click
+  modal.querySelector('.modal-overlay').onclick = closeHelpModal;
+}
+
+function closeHelpModal() {
+  const modal = document.getElementById('help-modal');
+  modal.classList.add('hidden');
 }
