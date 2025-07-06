@@ -4,20 +4,54 @@ let attractions = [];
 let categoryStates = {}; // Para almacenar el estado de las categorías
 
 window.addEventListener('DOMContentLoaded', async () => {
-  // Cargar atracciones una sola vez
-  attractions = await fetch('attractions.json').then(r => r.json());
-  
-  // Cargar estados de categorías guardados
-  loadCategoryStates();
-  
-  setupAuth();
-  document.getElementById('logout').onclick = logout;
-  listenForRankingUpdates();
-  
-  // Ensure auth element is visible and reset animations
-  const authElement = document.getElementById('auth');
-  authElement.style.animation = '';
-  authElement.classList.remove('hidden');
+  try {
+    // Cargar atracciones una sola vez
+    attractions = await fetch('attractions.json').then(r => r.json());
+    
+    // Cargar estados de categorías guardados
+    loadCategoryStates();
+    
+    // Verificar si hay una sesión guardada
+    const savedSession = getSavedSession();
+    if (savedSession) {
+      try {
+        // Intentar validar la sesión guardada
+        const snapshot = await dbRef.child('users/' + savedSession.username).get();
+        const userData = snapshot.val();
+        
+        if (userData && userData.password === savedSession.password) {
+          // Sesión válida, iniciar automáticamente
+          currentUser = { 
+            username: savedSession.username, 
+            ...userData, 
+            ridden: userData.ridden || [],
+            rideCounts: userData.rideCounts || {}
+          };
+          
+          // Cargar datos de todos los usuarios ANTES de mostrar la app
+          await updateRanking();
+          
+          showApp();
+          return;
+        }
+      } catch (error) {
+        console.error('Error validando sesión guardada:', error);
+        // Limpiar sesión inválida
+        clearSession();
+      }
+    }
+    
+    // Si no hay sesión válida, mostrar login
+    setupAuth();
+    
+    // Ensure auth element is visible and reset animations
+    const authElement = document.getElementById('auth');
+    authElement.style.animation = '';
+    authElement.classList.remove('hidden');
+  } catch (error) {
+    console.error('Error en la carga inicial:', error);
+    showToast('Error al cargar la aplicación. Recarga la página.', 'error');
+  }
 });
 
 function loadCategoryStates() {
@@ -40,13 +74,64 @@ function saveCategoryStates() {
   }
 }
 
+// Funciones para manejar cookies de sesión
+function setCookie(name, value, days = 30) {
+  const expires = new Date();
+  expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+  document.cookie = `${name}=${encodeURIComponent(JSON.stringify(value))};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
+}
+
+function getCookie(name) {
+  const nameEQ = name + "=";
+  const ca = document.cookie.split(';');
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+    if (c.indexOf(nameEQ) === 0) {
+      try {
+        return JSON.parse(decodeURIComponent(c.substring(nameEQ.length, c.length)));
+      } catch (error) {
+        console.error('Error parsing cookie:', error);
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
+function deleteCookie(name) {
+  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
+}
+
+function saveSession(username, password) {
+  setCookie('portaventura_session', { username, password });
+}
+
+function getSavedSession() {
+  return getCookie('portaventura_session');
+}
+
+function clearSession() {
+  deleteCookie('portaventura_session');
+}
+
 function setupAuth() {
   const form = document.getElementById('auth-form');
+
+  // Clear any existing event handlers
+  form.onsubmit = null;
 
   form.onsubmit = async e => {
     e.preventDefault();
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
+    const rememberSession = document.getElementById('remember-session').checked;
+
+    // Disable form during submission
+    const submitButton = form.querySelector('button[type="submit"]');
+    const originalText = submitButton.textContent;
+    submitButton.disabled = true;
+    submitButton.textContent = 'Entrando...';
 
     try {
       const snapshot = await dbRef.child('users/' + username).get();
@@ -57,11 +142,32 @@ function setupAuth() {
         return;
       }
       
-      currentUser = { username, ...userData, ridden: userData.ridden || [] };
+      currentUser = { 
+        username, 
+        ...userData, 
+        ridden: userData.ridden || [],
+        rideCounts: userData.rideCounts || {} // Nuevo campo para contar veces montadas
+      };
+      
+      // Guardar sesión en cookies solo si está marcado "Recordar sesión"
+      if (rememberSession) {
+        saveSession(username, password);
+      } else {
+        // Si no está marcado, limpiar cualquier sesión anterior
+        clearSession();
+      }
+      
+      // Cargar datos de todos los usuarios ANTES de mostrar la app
+      await updateRanking();
+      
       showApp();
     } catch (error) {
       console.error('Error durante el login:', error);
       showToast('Error durante el inicio de sesión. Por favor, intenta de nuevo.', 'error');
+    } finally {
+      // Re-enable form
+      submitButton.disabled = false;
+      submitButton.textContent = originalText;
     }
   };
 }
@@ -70,6 +176,9 @@ function logout() {
   const appElement = document.getElementById('app');
   const authElement = document.getElementById('auth');
   const userProfile = document.getElementById('user-profile');
+  
+  // Disconnect Firebase listener
+  dbRef.child('users').off('value');
   
   // Reset any existing animations
   authElement.style.animation = '';
@@ -89,9 +198,39 @@ function logout() {
     // Reset form fields
     document.getElementById('username').value = '';
     document.getElementById('password').value = '';
+    document.getElementById('remember-session').checked = true; // Reset checkbox
+    
+    // Clear session cookies
+    clearSession();
     
     // Reset auth state
     currentUser = null;
+    window.allUsers = null; // Limpiar datos de usuarios
+    
+    // Reset form submission handler
+    const form = document.getElementById('auth-form');
+    form.onsubmit = null;
+    
+    // Clear any existing event listeners
+    const logoutBtn = document.getElementById('logout');
+    if (logoutBtn) {
+      logoutBtn.onclick = null;
+    }
+    
+    const rankingBtn = document.getElementById('ranking-button');
+    if (rankingBtn) {
+      rankingBtn.onclick = null;
+    }
+    
+    // Re-setup auth
+    setupAuth();
+    
+    // Ensure form is ready for new login
+    const usernameField = document.getElementById('username');
+    const passwordField = document.getElementById('password');
+    if (usernameField && passwordField) {
+      usernameField.focus();
+    }
   }, 300);
 }
 
@@ -107,23 +246,55 @@ function showApp() {
     appElement.classList.remove('hidden');
     appElement.style.animation = 'slideInUp 0.5s ease-out';
     
+    // Show user profile immediately to prevent flickering
+    const userProfile = document.getElementById('user-profile');
+    if (userProfile) {
+      // Update user name display
+      const userNameDisplay = document.getElementById('user-name-display');
+      if (currentUser && userNameDisplay) {
+        userNameDisplay.textContent = currentUser.username;
+      }
+      // Show profile by removing visibility hidden and adding visible class
+      userProfile.style.visibility = 'visible';
+      userProfile.classList.add('visible');
+    }
+    
     // Add success animation to elements
-    setTimeout(() => {
-      renderAttractions();
-      renderStats();
-      
-      // Force ranking update immediately
-      updateRanking();
-      
-      // Setup user profile functionality
-      setupUserProfile();
-      
-      // Add success animation to cards
-      document.querySelectorAll('.card').forEach((card, index) => {
-        setTimeout(() => {
-          card.classList.add('success-animation');
-        }, index * 100);
-      });
+    setTimeout(async () => {
+      try {
+        // Asegurar que tenemos los datos de todos los usuarios antes de renderizar
+        if (!window.allUsers || Object.keys(window.allUsers).length === 0) {
+          await updateRanking();
+        }
+        
+        renderAttractions();
+        renderStats(window.allUsers);
+        
+        // Setup user profile functionality
+        setupUserProfile();
+        
+        // Setup logout button
+        document.getElementById('logout').onclick = logout;
+        
+        // Setup ranking button
+        document.getElementById('ranking-button').onclick = goToRankings;
+        
+        // Setup achievements button
+        document.getElementById('achievements-button').onclick = goToAchievements;
+        
+        // Start listening for ranking updates
+        listenForRankingUpdates();
+        
+        // Add success animation to cards
+        document.querySelectorAll('.card').forEach((card, index) => {
+          setTimeout(() => {
+            card.classList.add('success-animation');
+          }, index * 100);
+        });
+      } catch (error) {
+        console.error('Error en showApp:', error);
+        showToast('Error al cargar la aplicación. Recarga la página.', 'error');
+      }
     }, 300);
   }, 300);
 }
@@ -193,6 +364,7 @@ function renderAttractions() {
     categoryAttractions.forEach((attr, attrIndex) => {
       const li = document.createElement('li');
       const isRidden = currentUser.ridden.includes(attr.index);
+      const rideCount = currentUser.rideCounts[attr.index] || 0;
       
       const attractionInfo = document.createElement('div');
       attractionInfo.className = 'attraction-info';
@@ -201,6 +373,46 @@ function renderAttractions() {
       name.className = 'attraction-name';
       name.textContent = attr.name;
       
+      // Mostrar conteo de veces montadas si es mayor a 0
+      if (rideCount > 0) {
+        const rideCountBadge = document.createElement('span');
+        rideCountBadge.className = 'ride-count-badge';
+        
+        // Aplicar tema de color basado en el número de veces montadas
+        if (rideCount === 1) {
+          rideCountBadge.classList.add('bronze');
+        } else if (rideCount === 2) {
+          rideCountBadge.classList.add('silver');
+        } else if (rideCount >= 3) {
+          rideCountBadge.classList.add('gold');
+        }
+        
+        rideCountBadge.textContent = `×${rideCount}`;
+        name.appendChild(rideCountBadge);
+        
+        // Verificar si es líder de esta atracción
+        if (window.allUsers && Object.keys(window.allUsers).length > 0) {
+          const maxRideCount = Math.max(...Object.values(window.allUsers).map(user => 
+            user.rideCounts?.[attr.index] || 0
+          ));
+          
+          const usersWithMaxCount = Object.values(window.allUsers).filter(user => 
+            (user.rideCounts?.[attr.index] || 0) === maxRideCount && maxRideCount > 0
+          );
+          
+          // Si este usuario es líder (tiene el máximo y es mayor a 0)
+          if (rideCount === maxRideCount && maxRideCount > 0) {
+            const leaderBadge = document.createElement('span');
+            leaderBadge.className = usersWithMaxCount.length > 1 ? 'leader-badge tied' : 'leader-badge';
+            leaderBadge.innerHTML = usersWithMaxCount.length > 1 ? '🤝' : '👑';
+            leaderBadge.title = usersWithMaxCount.length > 1 ? 
+              `Líder empatado (${usersWithMaxCount.length} usuarios)` : 
+              'Líder de esta atracción';
+            name.appendChild(leaderBadge);
+          }
+        }
+      }
+      
       const points = document.createElement('span');
       points.className = 'attraction-points';
       points.textContent = `${attr.points}p`;
@@ -208,13 +420,34 @@ function renderAttractions() {
       attractionInfo.appendChild(name);
       attractionInfo.appendChild(points);
       
-      const btn = document.createElement('button');
-      btn.textContent = isRidden ? 'Desmarcar' : 'Marcar';
-      btn.className = isRidden ? 'success' : '';
-      btn.onclick = () => toggleRide(attr.index);
+      // Crear contenedor para botones
+      const buttonContainer = document.createElement('div');
+      buttonContainer.className = 'attraction-buttons';
+      
+      if (isRidden) {
+        // Botones + y - cuando está marcada
+        const minusBtn = document.createElement('button');
+        minusBtn.className = 'minus-btn';
+        minusBtn.innerHTML = '−';
+        minusBtn.onclick = () => decrementRide(attr.index);
+        
+        const plusBtn = document.createElement('button');
+        plusBtn.className = 'plus-btn';
+        plusBtn.innerHTML = '+';
+        plusBtn.onclick = () => incrementRide(attr.index);
+        
+        buttonContainer.appendChild(minusBtn);
+        buttonContainer.appendChild(plusBtn);
+      } else {
+        // Botón "Marcar" cuando no está marcada
+        const markBtn = document.createElement('button');
+        markBtn.textContent = 'Marcar';
+        markBtn.onclick = () => toggleRide(attr.index);
+        buttonContainer.appendChild(markBtn);
+      }
       
       li.appendChild(attractionInfo);
-      li.appendChild(btn);
+      li.appendChild(buttonContainer);
       
       // Add staggered animation
       li.style.opacity = '0';
@@ -238,9 +471,7 @@ function renderAttractions() {
   
   document.getElementById('total-attractions').textContent = attractions.length;
   
-  // Calculate max points
-  const maxPoints = attractions.reduce((total, attr) => total + attr.points, 0);
-  document.getElementById('max-points').textContent = maxPoints;
+
 }
 
 function toggleCategory(categorySection, categoryName) {
@@ -259,18 +490,36 @@ function toggleCategory(categorySection, categoryName) {
 
 async function toggleRide(index) {
   const ridden = currentUser.ridden || [];
+  const rideCounts = currentUser.rideCounts || {};
   const idx = ridden.indexOf(index);
-  const button = event.target;
   
   // Add loading state
-  button.classList.add('loading');
-  button.textContent = '...';
+  const button = event.target;
+  if (button) {
+    button.classList.add('loading');
+    button.textContent = '...';
+  }
   
   try {
-    if (idx >= 0) ridden.splice(idx, 1);
-    else ridden.push(index);
+    if (idx >= 0) {
+      // Desmarcar: eliminar de ridden y resetear conteo
+      ridden.splice(idx, 1);
+      delete rideCounts[index];
+    } else {
+      // Marcar: añadir a ridden y establecer conteo inicial a 1
+      ridden.push(index);
+      rideCounts[index] = 1;
+    }
     
-    await dbRef.child('users/' + currentUser.username + '/ridden').set(ridden);
+    // Actualizar ambos campos en la base de datos
+    await dbRef.child('users/' + currentUser.username).update({
+      ridden: ridden,
+      rideCounts: rideCounts
+    });
+    
+    // Actualizar el usuario local
+    currentUser.ridden = ridden;
+    currentUser.rideCounts = rideCounts;
     
     // Success animation
     button.classList.remove('loading');
@@ -288,26 +537,160 @@ async function toggleRide(index) {
   }
 }
 
-function calculatePoints(riddenIndices) {
+async function incrementRide(index) {
+  const rideCounts = currentUser.rideCounts || {};
+  const currentCount = rideCounts[index] || 0;
+  
+  try {
+    rideCounts[index] = currentCount + 1;
+    
+    await dbRef.child('users/' + currentUser.username + '/rideCounts/' + index).set(rideCounts[index]);
+    currentUser.rideCounts = rideCounts;
+    
+    renderAttractions();
+    renderStats();
+    updateRanking();
+    
+    showToast('¡Añadida una vez más!', 'success');
+  } catch (error) {
+    showToast('Error al actualizar. Inténtalo de nuevo.', 'error');
+  }
+}
+
+async function decrementRide(index) {
+  const rideCounts = currentUser.rideCounts || {};
+  const currentCount = rideCounts[index] || 0;
+  
+  if (currentCount <= 1) {
+    // Si solo queda 1, desmarcar completamente
+    await toggleRide(index);
+    return;
+  }
+  
+  try {
+    rideCounts[index] = currentCount - 1;
+    
+    await dbRef.child('users/' + currentUser.username + '/rideCounts/' + index).set(rideCounts[index]);
+    currentUser.rideCounts = rideCounts;
+    
+    renderAttractions();
+    renderStats();
+    updateRanking();
+    
+    showToast('Eliminada una vez', 'info');
+  } catch (error) {
+    showToast('Error al actualizar. Inténtalo de nuevo.', 'error');
+  }
+}
+
+function calculatePoints(riddenIndices, rideCounts = {}) {
   return riddenIndices.reduce((total, index) => {
-    return total + (attractions[index]?.points || 0);
+    const basePoints = attractions[index]?.points || 0;
+    const rideCount = rideCounts[index] || 0;
+    
+    // Solo dar puntos si se ha montado al menos una vez
+    if (rideCount > 0) {
+      return total + basePoints;
+    }
+    
+    return total;
   }, 0);
+}
+
+function calculateCrownsAndHandshakes(user, allUsers = null) {
+  let crowns = 0;
+  let handshakes = 0;
+  
+  if (!allUsers || !user.ridden) {
+    return { crowns, handshakes };
+  }
+  
+  user.ridden.forEach(index => {
+    const rideCount = user.rideCounts?.[index] || 0;
+    if (rideCount > 0) {
+      const maxRideCount = Math.max(...Object.values(allUsers).map(u => 
+        u.rideCounts?.[index] || 0
+      ));
+      
+      const usersWithMaxCount = Object.values(allUsers).filter(u => 
+        (u.rideCounts?.[index] || 0) === maxRideCount && maxRideCount > 0
+      );
+      
+      // Si este usuario es líder de esta atracción
+      if (rideCount === maxRideCount && maxRideCount > 0) {
+        if (usersWithMaxCount.length === 1) {
+          // Corona única
+          crowns++;
+        } else {
+          // Handshake por empate
+          handshakes++;
+        }
+      }
+    }
+  });
+  
+  return { crowns, handshakes };
+}
+
+function calculatePointsWithBonuses(riddenIndices, rideCounts = {}, allUsers = null) {
+  let totalPoints = 0;
+  
+  riddenIndices.forEach(index => {
+    const basePoints = attractions[index]?.points || 0;
+    const rideCount = rideCounts[index] || 0;
+    
+    if (rideCount > 0) {
+      let points = basePoints;
+      
+      // Verificar si es el que más veces se ha montado
+      if (allUsers) {
+        const maxRideCount = Math.max(...Object.values(allUsers).map(user => 
+          user.rideCounts?.[index] || 0
+        ));
+        
+        const usersWithMaxCount = Object.values(allUsers).filter(user => 
+          (user.rideCounts?.[index] || 0) === maxRideCount && maxRideCount > 0
+        );
+        
+        // Si este usuario está entre los que más veces se han montado
+        if (rideCount === maxRideCount && maxRideCount > 0) {
+          // Duplicar puntos si es el único, o dividir entre los que empatan
+          if (usersWithMaxCount.length === 1) {
+            points = basePoints * 2;
+          } else {
+            // En caso de empate, todos reciben la duplicación
+            points = basePoints * 2;
+          }
+        }
+      }
+      
+      totalPoints += points;
+    }
+  });
+  
+  return totalPoints;
 }
 
 function renderStats(users = null) {
   const riddenCount = (currentUser.ridden || []).length;
-  const totalPoints = calculatePoints(currentUser.ridden || []);
-  const maxPoints = attractions.reduce((total, attr) => total + attr.points, 0);
-  const pct = (totalPoints / maxPoints) * 100;
+  const totalPoints = calculatePointsWithBonuses(currentUser.ridden || [], currentUser.rideCounts || {}, users);
+  const totalAttractions = attractions.length;
+  const attractionPct = (riddenCount / totalAttractions) * 100;
+  
+  // Calculate crowns and handshakes
+  const { crowns, handshakes } = calculateCrownsAndHandshakes(currentUser, users);
   
   document.getElementById('ridden-count').textContent = riddenCount;
   document.getElementById('total-points').textContent = totalPoints;
+  document.getElementById('total-attractions').textContent = totalAttractions;
+  document.getElementById('crowns-count').textContent = crowns;
+  document.getElementById('handshakes-count').textContent = handshakes;
   
   const progressFill = document.getElementById('progress-fill');
-  progressFill.style.width = pct + '%';
+  progressFill.style.width = attractionPct + '%';
   
   // Add complete class if progress is 100%
-  if (pct >= 100) {
+  if (attractionPct >= 100) {
     progressFill.classList.add('complete');
   } else {
     progressFill.classList.remove('complete');
@@ -320,7 +703,7 @@ function renderStats(users = null) {
     const ranking = Object.entries(users).map(([username, data]) => ({
       username,
       ridden: data.ridden?.length || 0,
-      points: calculatePoints(data.ridden || [])
+      points: calculatePointsWithBonuses(data.ridden || [], data.rideCounts || {}, users)
     })).sort((a, b) => b.points - a.points);
 
     const ol = document.getElementById('ranking-list');
@@ -437,11 +820,20 @@ async function updateRanking() {
     const snapshot = await dbRef.child('users').get();
     const allUsers = snapshot.val() || {};
     
+    // Hacer disponible globalmente para el renderizado
+    window.allUsers = allUsers;
+    
     if (currentUser && allUsers[currentUser.username]) {
       currentUser.ridden = allUsers[currentUser.username].ridden || [];
+      currentUser.rideCounts = allUsers[currentUser.username].rideCounts || {};
     }
     
     renderStats(allUsers);
+    
+    // Re-renderizar atracciones para actualizar emoticonos si la app está visible
+    if (!document.getElementById('app').classList.contains('hidden')) {
+      renderAttractions();
+    }
   } catch (error) {
     console.error('Error updating ranking:', error);
   }
@@ -450,8 +842,13 @@ async function updateRanking() {
 function listenForRankingUpdates() {
   dbRef.child('users').on('value', snapshot => {
     const allUsers = snapshot.val() || {};
+    
+    // Hacer disponible globalmente para el renderizado
+    window.allUsers = allUsers;
+    
     if (currentUser && allUsers[currentUser.username]) {
       currentUser.ridden = allUsers[currentUser.username].ridden || [];
+      currentUser.rideCounts = allUsers[currentUser.username].rideCounts || {};
       renderStats(allUsers);
     }
   });
@@ -465,13 +862,8 @@ function setupUserProfile() {
   const profileForm = document.getElementById('profile-form');
   const deleteAccountBtn = document.getElementById('delete-account');
   
-  // Update user name display
-  updateUserNameDisplay();
-  
-  // Show user profile in correct position
-  setTimeout(() => {
-    userProfile.classList.add('visible');
-  }, 100);
+  // User profile is already visible and name is already set in showApp()
+  // Just setup the event listeners
   
   // Open modal on user profile click
   userProfile.addEventListener('click', () => {
@@ -569,10 +961,17 @@ async function updateUserProfile() {
     
     // If username is changing, we need to move the data
     if (newUsername !== currentUser.username) {
-      // Copy current user data to new username
+      // Copy ALL current user data to new username
       const currentUserData = {
         password: newPassword || currentUser.password,
-        ridden: currentUser.ridden || []
+        ridden: currentUser.ridden || [],
+        rideCounts: currentUser.rideCounts || {},
+        // Preserve any other user data that might exist
+        ...Object.fromEntries(
+          Object.entries(currentUser).filter(([key]) => 
+            !['username', 'password', 'ridden', 'rideCounts'].includes(key)
+          )
+        )
       };
       
       // Set new user data
@@ -584,6 +983,8 @@ async function updateUserProfile() {
       // Update current user
       currentUser.username = newUsername;
       currentUser.password = currentUserData.password;
+      // Update other fields in currentUser to match the saved data
+      Object.assign(currentUser, currentUserData);
     } else if (newPassword) {
       // Only update password
       await dbRef.child('users/' + currentUser.username + '/password').set(newPassword);
@@ -774,4 +1175,13 @@ function renderCategoryStats() {
     
     categoryStatsContainer.appendChild(categoryStat);
   });
+}
+
+// Navigation function for rankings page
+function goToRankings() {
+  window.location.href = 'rankings.html';
+}
+
+function goToAchievements() {
+  window.location.href = 'logros.html';
 }

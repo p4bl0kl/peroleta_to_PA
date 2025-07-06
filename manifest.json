@@ -7,9 +7,9 @@
     "theme_color": "#ffffff",
     "icons": [
       {
-        "src": "icono.png",
+        "src": "mclovin.jpg",
         "sizes": "180x180",
-        "type": "image/png"
+        "type": "image/jpeg"
       }
     ]
   }
