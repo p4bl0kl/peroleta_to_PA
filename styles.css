@@ -518,6 +518,7 @@ header h1 {
   align-items: center;
   gap: var(--spacing-md);
   flex: 1;
+  min-width: 0;
 }
 
 .position-badge {
@@ -559,12 +560,17 @@ header h1 {
   flex-direction: column;
   gap: var(--spacing-xs);
   flex: 1;
+  min-width: 0;
 }
 
 .user-name {
   font-weight: 600;
   color: var(--text-primary);
   font-size: 16px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .user-stats {
@@ -604,6 +610,9 @@ header h1 {
   font-weight: 600;
   color: var(--primary-blue);
   margin-left: var(--spacing-xl);
+  flex-shrink: 0;
+  min-width: 3em;
+  justify-content: flex-end;
 }
 
 .score-number {
@@ -2457,4 +2466,51 @@ input:focus {
   color: var(--text-secondary);
   font-size: 16px;
   font-weight: 400;
+}
+
+#player-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background: var(--background-tertiary);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-lg) var(--spacing-sm) var(--spacing-md);
+  font-size: 16px;
+  color: var(--text-primary);
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  box-shadow: 0 2px 8px var(--shadow-light);
+  cursor: pointer;
+  min-width: 220px;
+  margin-left: 0.5em;
+}
+#player-select:focus {
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3px rgba(90, 200, 250, 0.15);
+}
+#player-select::-ms-expand {
+  display: none;
+}
+#player-select option {
+  background: var(--background-secondary);
+  color: var(--text-primary);
+}
+
+/* Flecha personalizada para el select */
+#player-select {
+  background-image: url('data:image/svg+xml;utf8,<svg fill="%23007AFF" height="20" viewBox="0 0 20 20" width="20" xmlns="http://www.w3.org/2000/svg"><path d="M5.516 7.548a1 1 0 0 1 1.415 0L10 10.617l3.07-3.07a1 1 0 1 1 1.415 1.415l-3.777 3.778a1 1 0 0 1-1.415 0L5.516 8.963a1 1 0 0 1 0-1.415z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 0.75em center;
+  background-size: 1.2em;
+}
+
+/* Label del combobox */
+label[for="player-select"] {
+  font-size: 15px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  margin-right: 0.5em;
 }

@@ -3,6 +3,7 @@ let currentUser = null;
 let attractions = [];
 let allUsers = {};
 let attractionsChart = null;
+let playerAttractionsChart = null;
 
 // Verificación de sesión al cargar la página
 window.addEventListener('DOMContentLoaded', async () => {
@@ -581,9 +582,8 @@ function showRankings() {
   renderCrownLeaders();
   renderActivePlayers();
   renderAttractionsChart();
+  setupPlayerAttractionsChart();
 }
-
-
 
 async function loadAllUsers() {
   try {
@@ -612,8 +612,6 @@ function logout() {
   // Redirect to login page
   window.location.href = 'login.html';
 }
-
-
 
 // Setup navigation buttons when rankings app is shown
 function setupNavigation() {
@@ -645,6 +643,9 @@ dbRef.child('users').on('value', snapshot => {
     renderCrownLeaders();
     renderActivePlayers();
     renderAttractionsChart();
+    populatePlayerSelect();
+    const select = document.getElementById('player-select');
+    if (select) renderPlayerAttractionsChart(select.value);
   }
 });
 
@@ -821,4 +822,78 @@ function showSuccessNotification(message) {
       successModal.classList.add('hidden');
     }
   });
+}
+
+function populatePlayerSelect() {
+  const select = document.getElementById('player-select');
+  if (!select) return;
+  select.innerHTML = '';
+  Object.keys(allUsers).forEach(username => {
+    const option = document.createElement('option');
+    option.value = username;
+    option.textContent = username;
+    select.appendChild(option);
+  });
+  // Restaurar selección previa de cookies
+  const lastSelected = getCookie('last_player_selected');
+  if (lastSelected && allUsers[lastSelected]) {
+    select.value = lastSelected;
+  }
+}
+
+function renderPlayerAttractionsChart(username) {
+  const ctx = document.getElementById('player-attractions-chart-canvas');
+  if (!ctx) return;
+  if (playerAttractionsChart) {
+    playerAttractionsChart.destroy();
+  }
+  const user = allUsers[username];
+  if (!user) return;
+  // Calcular veces montadas por atracción para este usuario
+  const rideCounts = user.rideCounts || {};
+  const attractionCounts = attractions.map((attr, idx) => ({
+    name: attr.name,
+    count: rideCounts[idx] || 0
+  }));
+  // Ordenar por más montadas y tomar top 10
+  const sorted = attractionCounts.sort((a, b) => b.count - a.count).slice(0, 10);
+  const labels = sorted.map(a => a.name);
+  const data = sorted.map(a => a.count);
+  playerAttractionsChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Veces montadas',
+        data: data,
+        backgroundColor: 'rgba(255, 159, 64, 0.8)',
+        borderColor: 'rgba(255, 159, 64, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { stepSize: 1 }
+        }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+function setupPlayerAttractionsChart() {
+  const select = document.getElementById('player-select');
+  if (!select) return;
+  populatePlayerSelect();
+  // Render inicial
+  renderPlayerAttractionsChart(select.value);
+  // Guardar selección en cookies y actualizar gráfico al cambiar
+  select.onchange = function() {
+    setCookie('last_player_selected', select.value, 365);
+    renderPlayerAttractionsChart(select.value);
+  };
 } 
